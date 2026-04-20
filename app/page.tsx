@@ -31,6 +31,7 @@ export default function Home() {
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link
             href="/dashboard"
+            prefetch
             className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition hover:bg-indigo-500 hover:shadow-indigo-500/30"
           >
             대시보드 열기
