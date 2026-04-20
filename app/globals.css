@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@source "./**/*.{js,ts,jsx,tsx}";
+@source "../src/**/*.{js,ts,jsx,tsx}";
+
+@theme {
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+::selection {
+  background-color: rgb(199 210 254 / 0.6);
+  color: rgb(15 23 42);
+}
