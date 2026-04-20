@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 
 export type DashboardTabId = "main" | "summary" | "ledger" | "unclassified";
 
@@ -25,7 +25,12 @@ function tabFromSearchParam(tab: string | null): DashboardTabId {
 }
 
 /**
- * 메인 / Sheet1 / 가계부 / 미분류 — `?tab=` (기본 메인은 파라미터 생략).
+ * 탭 전환은 클라이언트 state만 변경합니다.
+ *
+ * `router.push`로 `?tab=` 을 바꾸면 서버에서 대시보드 전체(RSC) + DB 조회가 다시 돌아갑니다.
+ * 로컬 DB는 가까워서 덜 느끼지만, Vercel ↔ Supabase 왕복에서는 탭만 바꿔도 매우 느려집니다.
+ *
+ * URL의 `?tab=` 은 **첫 로드·월 변경 등 네비게이션** 때만 반영합니다 (`searchKey` 변경 시).
  */
 export function DashboardMainTabs({
   mainPanel,
@@ -34,22 +39,18 @@ export function DashboardMainTabs({
   unclassifiedPanel,
 }: Props) {
   const sp = useSearchParams();
-  const router = useRouter();
-  const tab = tabFromSearchParam(sp.get("tab"));
+  const searchKey = sp.toString();
 
-  const setTab = useCallback(
-    (next: DashboardTabId) => {
-      const q = new URLSearchParams(sp.toString());
-      if (next === "main") {
-        q.delete("tab");
-      } else {
-        q.set("tab", next);
-      }
-      const qs = q.toString();
-      router.push(qs ? `/dashboard?${qs}` : "/dashboard");
-    },
-    [router, sp],
-  );
+  const [tab, setTab] = useState<DashboardTabId>(() => tabFromSearchParam(sp.get("tab")));
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchKey);
+    setTab(tabFromSearchParam(params.get("tab")));
+  }, [searchKey]);
+
+  const setTabOnly = useCallback((next: DashboardTabId) => {
+    setTab(next);
+  }, []);
 
   const activePanel =
     tab === "summary"
@@ -69,7 +70,7 @@ export function DashboardMainTabs({
             <button
               key={t.id}
               type="button"
-              onClick={() => setTab(t.id)}
+              onClick={() => setTabOnly(t.id)}
               className={`rounded-xl px-3 py-2.5 text-sm font-medium transition-all sm:px-4 ${
                 active
                   ? "bg-white text-indigo-900 shadow-sm ring-1 ring-slate-200/80"
