@@ -35,12 +35,6 @@ export default function Home() {
           >
             대시보드 열기
           </Link>
-          <Link
-            href="/transfers"
-            className="text-sm font-medium text-slate-600 underline-offset-4 transition hover:text-slate-900 hover:underline"
-          >
-            이체 분류 →
-          </Link>
         </div>
         <p className="mt-16 text-xs text-slate-400">로컬에서 실행 중인 개인용 도구입니다.</p>
       </main>

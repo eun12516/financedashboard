@@ -170,7 +170,7 @@ export default async function DashboardPage({
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-indigo-600/90">Dashboard</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">재무 대시보드</h1>
           <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600">
-            메인에서 자산·투자 비중을 보고, 미분류 탭에서 이체 거래를 정리할 수 있습니다.
+            메인에서 자산·투자 비중을 보고, 미분류 탭에서 이체 거래 분류를 정리할 수 있습니다.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -181,12 +181,6 @@ export default async function DashboardPage({
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
             >
               홈
-            </Link>
-            <Link
-              href="/transfers"
-              className="rounded-lg border border-indigo-200 bg-indigo-50/80 px-3 py-2 font-medium text-indigo-800 transition hover:bg-indigo-100"
-            >
-              이체 분류
             </Link>
           </nav>
         </div>

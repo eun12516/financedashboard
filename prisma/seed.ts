@@ -78,13 +78,14 @@ async function main() {
     });
   }
 
-  const count = await prisma.account.count();
-  if (count === 0) {
-    await prisma.account.create({
-      data: { name: "Default", currency: "KRW" },
-    });
-    console.log("Created default account (seed).");
+  for (let n = 1; n <= 5; n++) {
+    const name = `계정 ${n}`;
+    const exists = await prisma.account.findFirst({ where: { name } });
+    if (!exists) {
+      await prisma.account.create({ data: { name, currency: "KRW" } });
+    }
   }
+  console.log(`Accounts (계정 1–5 ensured): ${await prisma.account.count()}.`);
 
   console.log(
     `Seed done. Classifications: ${await prisma.transferClassification.count()}, backfilled: ${needsBackfill.length}.`,

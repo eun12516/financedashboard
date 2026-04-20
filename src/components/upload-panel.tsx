@@ -12,6 +12,13 @@ export type UploadPanelProps = {
 
 type AccountOption = { id: string; name: string; currency: string };
 
+const ACCOUNT_SLOT_COUNT = 5 as const;
+
+function accountIdForSlot(accounts: AccountOption[], slot: number): string | undefined {
+  const name = `계정 ${slot}`;
+  return accounts.find((a) => a.name.trim() === name)?.id;
+}
+
 type UploadSummary = {
   uploadId: string;
   filename: string;
@@ -78,7 +85,14 @@ export function UploadPanel({ onUploadSuccess, variant = "page" }: UploadPanelPr
       const accs = data.accounts ?? [];
       if (seq !== loadAccountsSeq.current) return;
       setAccounts(accs);
-      setAccountId((prev) => prev || accs[0]?.id || "");
+      setAccountId((prev) => {
+        if (prev && accs.some((a) => a.id === prev)) return prev;
+        for (let s = 1; s <= ACCOUNT_SLOT_COUNT; s++) {
+          const id = accountIdForSlot(accs, s);
+          if (id) return id;
+        }
+        return accs[0]?.id ?? "";
+      });
     } catch (e) {
       const aborted =
         (e instanceof DOMException && e.name === "AbortError") ||
@@ -381,27 +395,61 @@ export function UploadPanel({ onUploadSuccess, variant = "page" }: UploadPanelPr
 
       <form onSubmit={(e) => void onSubmit(e)} className="mt-4 space-y-4">
         <div>
-          <label htmlFor="account" className="block text-sm font-medium text-slate-700">
-            계정
-          </label>
-          <select
-            id="account"
-            value={accountId}
-            onChange={(e) => setAccountId(e.target.value)}
-            className="mt-1 w-full max-w-md rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm"
-            required
-            disabled={accounts.length === 0 || accountsLoading}
-          >
-            {accounts.length === 0 ? (
-              <option value="">—</option>
-            ) : (
-              accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name} ({a.currency.trim()})
-                </option>
-              ))
-            )}
-          </select>
+          <span className="block text-sm font-medium text-slate-700">저장할 계정 (1–5)</span>
+          <p className="mt-1 text-xs text-slate-500">
+            번호를 선택하면 해당 계정(이름: 계정 1 … 계정 5)에 거래가 반영됩니다.
+          </p>
+          <fieldset className="mt-3">
+            <legend className="sr-only">계정 번호</legend>
+            <div className="flex flex-wrap gap-2">
+              {Array.from({ length: ACCOUNT_SLOT_COUNT }, (_, i) => i + 1).map((slot) => {
+                const slotId = accountIdForSlot(accounts, slot);
+                const disabled = accountsLoading || !slotId;
+                return (
+                  <label
+                    key={slot}
+                    className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                      accountId === slotId && slotId
+                        ? "border-indigo-500 bg-indigo-50 text-indigo-900 ring-2 ring-indigo-500/30"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                    } ${disabled ? "cursor-not-allowed opacity-45" : ""}`}
+                    title={!slotId ? `DB에 「계정 ${slot}」이 없습니다. npm run db:seed 로 생성할 수 있습니다.` : undefined}
+                  >
+                    <input
+                      type="radio"
+                      name="accountSlot"
+                      className="sr-only"
+                      checked={Boolean(slotId && accountId === slotId)}
+                      disabled={disabled}
+                      onChange={() => slotId && setAccountId(slotId)}
+                    />
+                    <span className="tabular-nums">{slot}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+          {accounts.length > 0 &&
+          !accountsLoading &&
+          ![1, 2, 3, 4, 5].some((s) => accountIdForSlot(accounts, s)) ? (
+            <div className="mt-3">
+              <label htmlFor="account-legacy" className="block text-xs font-medium text-slate-600">
+                계정 1–5가 없을 때만: 기존 계정에서 선택
+              </label>
+              <select
+                id="account-legacy"
+                value={accountId}
+                onChange={(e) => setAccountId(e.target.value)}
+                className="mt-1 w-full max-w-md rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm"
+              >
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} ({a.currency.trim()})
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
         </div>
 
         <button
@@ -410,6 +458,7 @@ export function UploadPanel({ onUploadSuccess, variant = "page" }: UploadPanelPr
             loading ||
             accounts.length === 0 ||
             accountsLoading ||
+            !accountId ||
             !file ||
             previewLoading ||
             !!previewError ||
