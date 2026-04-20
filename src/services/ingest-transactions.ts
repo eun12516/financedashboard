@@ -25,6 +25,7 @@ export type IngestFileInput = {
   filename: string;
   buffer: Buffer;
   accountId: string;
+  userId: string;
   /** Optional: override auto-detected columns (same shape as `ColumnBinding`). */
   columnBinding?: ColumnBinding;
 };
@@ -37,10 +38,10 @@ function sha256(buffer: Buffer): Buffer {
  * Full ingestion: parse → normalize → insert new / refresh auto-classified duplicates → finalize upload row.
  */
 export async function ingestTransactionFile(input: IngestFileInput) {
-  const { filename, buffer, accountId } = input;
+  const { filename, buffer, accountId, userId } = input;
 
   const account = await prisma.account.findFirst({
-    where: { id: accountId, isActive: true },
+    where: { id: accountId, userId, isActive: true },
     select: { id: true },
   });
   if (!account) {
@@ -51,6 +52,7 @@ export async function ingestTransactionFile(input: IngestFileInput) {
 
   const upload = await prisma.upload.create({
     data: {
+      userId,
       originalFilename: filename,
       fileSha256,
       status: "processing",
@@ -93,7 +95,7 @@ export async function ingestTransactionFile(input: IngestFileInput) {
         },
       });
       try {
-        await persistWorkbookSheet1Snapshot(buffer, filename, accountId, upload.id);
+        await persistWorkbookSheet1Snapshot(buffer, filename, accountId, upload.id, userId);
       } catch (e) {
         console.warn("[ingest] Sheet1 snapshot skipped", e);
       }
@@ -159,7 +161,7 @@ export async function ingestTransactionFile(input: IngestFileInput) {
 
     /** findMany + createMany + batched refresh (see below) — same root `prisma`, no leaked ITX. */
     const existingDetails = await prisma.transaction.findMany({
-      where: { accountId, dedupeHash: { in: uniqueHashes } },
+      where: { accountId, userId, dedupeHash: { in: uniqueHashes } },
       select: { dedupeHash: true, classificationManual: true },
     });
     const existingByHex = new Map<string, boolean>();
@@ -183,6 +185,7 @@ export async function ingestTransactionFile(input: IngestFileInput) {
         : (
             await prisma.transaction.createMany({
               data: toInsert.map((r) => ({
+                userId,
                 accountId,
                 firstSeenUploadId: upload.id,
                 occurredOn: r.occurredOn,
@@ -208,12 +211,11 @@ export async function ingestTransactionFile(input: IngestFileInput) {
       const chunk = toRefresh.slice(i, i + REFRESH_CHUNK);
       await prisma.$transaction(
         chunk.map((r) =>
-          prisma.transaction.update({
+          prisma.transaction.updateMany({
             where: {
-              accountId_dedupeHash: {
-                accountId,
-                dedupeHash: r.hashKey,
-              },
+              accountId,
+              userId,
+              dedupeHash: r.hashKey,
             },
             data: {
               occurredOn: r.occurredOn,
@@ -245,7 +247,7 @@ export async function ingestTransactionFile(input: IngestFileInput) {
     const result = { inserted, refreshed, skippedLocked };
 
     try {
-      await persistWorkbookSheet1Snapshot(buffer, filename, accountId, upload.id);
+      await persistWorkbookSheet1Snapshot(buffer, filename, accountId, upload.id, userId);
     } catch (e) {
       console.warn("[ingest] Sheet1 snapshot skipped", e);
     }

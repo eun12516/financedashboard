@@ -17,9 +17,10 @@ export type PendingTransferListItem = {
  * Pending = transfer-like (`isTransfer`) but user has not chosen meaning yet.
  * Ordered by transaction date descending (latest first).
  */
-export async function getPendingTransfers(): Promise<PendingTransferListItem[]> {
+export async function getPendingTransfers(userId: string): Promise<PendingTransferListItem[]> {
   const rows = await prisma.transaction.findMany({
     where: {
+      userId,
       isTransfer: true,
       transferClassificationId: null,
     },

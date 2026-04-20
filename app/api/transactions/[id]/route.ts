@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
+import { requireUserResponse } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function classificationMatchesAmountSign(code: string, amount: Prisma.Decimal): string | null {
@@ -24,6 +25,10 @@ export const dynamic = "force-dynamic";
  * PATCH /api/transactions/:id  { "classificationCode": "SPENDING" | "INCOME" | ... }
  */
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const userOrRes = await requireUserResponse();
+  if (userOrRes instanceof NextResponse) return userOrRes;
+  const user = userOrRes;
+
   const { id } = await ctx.params;
   if (!id) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
@@ -53,8 +58,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     return NextResponse.json({ error: "Unknown classification code" }, { status: 400 });
   }
 
-  const existing = await prisma.transaction.findUnique({
-    where: { id },
+  const existing = await prisma.transaction.findFirst({
+    where: { id, userId: user.id },
     select: { amount: true },
   });
   if (!existing) {
@@ -67,19 +72,30 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   }
 
   try {
-    const updated = await prisma.transaction.update({
-      where: { id },
+    const updated = await prisma.transaction.updateMany({
+      where: { id, userId: user.id },
       data: {
         transferClassificationId: cls.id,
         classificationManual: true,
       },
+    });
+    if (updated.count === 0) {
+      return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
+    }
+
+    const row = await prisma.transaction.findFirst({
+      where: { id, userId: user.id },
       select: {
         id: true,
         transferClassificationId: true,
         classification: { select: { code: true, label: true } },
       },
     });
-    return NextResponse.json(updated);
+    if (!row) {
+      return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(row);
   } catch {
     return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
   }

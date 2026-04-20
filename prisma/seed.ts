@@ -3,11 +3,19 @@ import {
   extractSubcategoryRawFromMergedCategory,
   inferFlowClassificationCode,
 } from "../src/lib/classification/infer-flow";
+import { LEGACY_DEFAULT_USER_ID } from "../src/lib/auth-constants";
+import { ensureDefaultFinancialAccount } from "../src/lib/ensure-default-account";
 import { invalidateClassificationCache } from "../src/services/transfer-classification-map";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  await prisma.user.upsert({
+    where: { id: LEGACY_DEFAULT_USER_ID },
+    create: { id: LEGACY_DEFAULT_USER_ID, email: "legacy-owner@local" },
+    update: {},
+  });
+
   await prisma.transferClassification.createMany({
     data: [
       { code: "INCOME", label: "수입", sortOrder: 1 },
@@ -78,14 +86,10 @@ async function main() {
     });
   }
 
-  for (let n = 1; n <= 5; n++) {
-    const name = `계정 ${n}`;
-    const exists = await prisma.account.findFirst({ where: { name } });
-    if (!exists) {
-      await prisma.account.create({ data: { name, currency: "KRW" } });
-    }
-  }
-  console.log(`Accounts (계정 1–5 ensured): ${await prisma.account.count()}.`);
+  await ensureDefaultFinancialAccount(LEGACY_DEFAULT_USER_ID);
+  console.log(
+    `Legacy user default account ensured. Accounts for legacy user: ${await prisma.account.count({ where: { userId: LEGACY_DEFAULT_USER_ID } })}.`,
+  );
 
   console.log(
     `Seed done. Classifications: ${await prisma.transferClassification.count()}, backfilled: ${needsBackfill.length}.`,

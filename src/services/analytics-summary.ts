@@ -59,6 +59,7 @@ function groupRowsByMonthKey(rows: FetchedTransactionRow[]): Map<string, Transac
 export async function getAnalyticsSummary(
   year: number,
   month: number,
+  userId: string,
   options?: { trendMonthCount?: number },
 ): Promise<AnalyticsSummaryResponse> {
   if (!Number.isInteger(year) || year < 2000 || year > 2100) {
@@ -81,6 +82,7 @@ export async function getAnalyticsSummary(
 
   const rawRows = await prisma.transaction.findMany({
     where: {
+      userId,
       occurredOn: {
         gte: windowStart,
         lt: windowEndExclusive,

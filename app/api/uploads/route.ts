@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { IngestError, ingestTransactionFile } from "@/services/ingest-transactions";
+import { requireUserResponse } from "@/lib/auth";
 import type { ColumnBinding } from "@/lib/ingestion/types";
+import { IngestError, ingestTransactionFile } from "@/services/ingest-transactions";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -15,6 +16,10 @@ const MAX_FILE_BYTES = 12 * 1024 * 1024;
  * - `columnMap` (optional): JSON string of ColumnBinding — manual header mapping
  */
 export async function POST(req: Request) {
+  const userOrRes = await requireUserResponse();
+  if (userOrRes instanceof NextResponse) return userOrRes;
+  const user = userOrRes;
+
   const len = req.headers.get("content-length");
   if (len && Number(len) > MAX_FILE_BYTES) {
     return NextResponse.json({ error: "File too large" }, { status: 413 });
@@ -67,6 +72,7 @@ export async function POST(req: Request) {
       filename: file.name || "upload",
       buffer: buf,
       accountId: accountId.trim(),
+      userId: user.id,
       columnBinding,
     });
     return NextResponse.json(summary);

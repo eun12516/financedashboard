@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { LogoutButton } from "@/components/auth/logout-button";
+import { getCurrentUser } from "@/lib/auth";
 import { getPendingTransfers } from "@/services/pending-transfers";
 import { PendingTransferList } from "./pending-transfer-list";
 
@@ -10,7 +13,10 @@ export const metadata = {
 };
 
 export default async function TransfersPage() {
-  const initialRows = await getPendingTransfers();
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const initialRows = await getPendingTransfers(user.id);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -27,7 +33,7 @@ export default async function TransfersPage() {
             보여 줍니다(대부분 비어 있을 수 있습니다).
           </p>
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2">
           <Link
             href="/"
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
@@ -40,6 +46,7 @@ export default async function TransfersPage() {
           >
             대시보드
           </Link>
+          <LogoutButton />
         </div>
       </div>
 

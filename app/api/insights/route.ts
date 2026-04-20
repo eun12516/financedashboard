@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireUserResponse } from "@/lib/auth";
 import { AnalyticsValidationError } from "@/services/analytics-summary";
 import { getFinancialInsights } from "@/services/insights";
 
@@ -11,6 +12,10 @@ export const maxDuration = 60;
  * Uses existing analytics layer → compact payload → LLM (or rule-based fallback).
  */
 export async function GET(req: Request) {
+  const userOrRes = await requireUserResponse();
+  if (userOrRes instanceof NextResponse) return userOrRes;
+  const user = userOrRes;
+
   const { searchParams } = new URL(req.url);
   const yearRaw = searchParams.get("year");
   const monthRaw = searchParams.get("month");
@@ -29,7 +34,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const payload = await getFinancialInsights(year, month);
+    const payload = await getFinancialInsights(year, month, user.id);
     return NextResponse.json(payload);
   } catch (e) {
     if (e instanceof AnalyticsValidationError) {

@@ -14,8 +14,9 @@ import { getAnalyticsSummary } from "@/services/analytics-summary";
 export async function getFinancialInsights(
   year: number,
   month: number,
+  userId: string,
 ): Promise<InsightsApiResponse> {
-  const analytics = await getAnalyticsSummary(year, month, { trendMonthCount: 6 });
+  const analytics = await getAnalyticsSummary(year, month, userId, { trendMonthCount: 6 });
   const compact = buildCompactAnalyticsPayload(analytics);
 
   if (compact.executive.transactionCount === 0) {

@@ -22,11 +22,12 @@ export type MonthTransactionRow = {
 export async function getMonthTransactionsForDashboard(
   year: number,
   month: number,
+  userId: string,
   take = 50,
 ): Promise<MonthTransactionRow[]> {
   const { start, endExclusive } = utcMonthRange(year, month);
   const rows = await prisma.transaction.findMany({
-    where: { occurredOn: { gte: start, lt: endExclusive } },
+    where: { userId, occurredOn: { gte: start, lt: endExclusive } },
     orderBy: [{ occurredOn: "desc" }, { id: "desc" }],
     take,
     select: {
@@ -66,11 +67,13 @@ export async function listTransferClassifications() {
 export async function getMonthUnclassifiedTransactions(
   year: number,
   month: number,
+  userId: string,
   take = 100,
 ): Promise<MonthTransactionRow[]> {
   const { start, endExclusive } = utcMonthRange(year, month);
   const rows = await prisma.transaction.findMany({
     where: {
+      userId,
       occurredOn: { gte: start, lt: endExclusive },
       ...unclassifiedWhere,
     },

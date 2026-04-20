@@ -11,6 +11,20 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+/// App user (1:1 with Supabase Auth `auth.users.id` when using email login).
+model User {
+  id        String   @id @db.Uuid
+  email     String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  accounts                Account[]
+  uploads                 Upload[]
+  transactions            Transaction[]
+  workbookSheet1Snapshots WorkbookSheet1Snapshot[]
+
+  @@map("users")
+}
+
 model TransferClassification {
   id          Int           @id @default(autoincrement()) @db.SmallInt
   code        String        @unique
@@ -23,19 +37,25 @@ model TransferClassification {
 
 model Account {
   id           String        @id @default(uuid()) @db.Uuid
+  userId       String        @map("user_id") @db.Uuid
   name         String
   currency     String        @default("KRW") @db.Char(3)
   isActive     Boolean       @default(true) @map("is_active")
   createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user         User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[]
   sheet1Snapshots WorkbookSheet1Snapshot[]
 
+  @@unique([userId, name], map: "uq_accounts_user_name")
+  @@index([userId], map: "ix_accounts_user_id")
   @@map("accounts")
 }
 
 model Upload {
   id               String    @id @default(uuid()) @db.Uuid
+  userId           String      @map("user_id") @db.Uuid
   originalFilename String    @map("original_filename")
   fileSha256       Bytes?    @map("file_sha256")
   status           String    @default("pending")
@@ -44,15 +64,19 @@ model Upload {
   errorMessage     String?   @map("error_message")
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   completedAt      DateTime? @map("completed_at") @db.Timestamptz(6)
-  transactions     Transaction[]
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
   sheet1Snapshot   WorkbookSheet1Snapshot?
 
+  @@index([userId], map: "ix_uploads_user_id")
   @@map("uploads")
 }
 
 /// Parsed Sheet1 (요약 리포트) from 2-sheet household Excel — not used for transaction rows.
 model WorkbookSheet1Snapshot {
   id        String @id @default(uuid()) @db.Uuid
+  userId    String @map("user_id") @db.Uuid
   accountId String @map("account_id") @db.Uuid
   uploadId  String @unique @map("upload_id") @db.Uuid
 
@@ -65,15 +89,18 @@ model WorkbookSheet1Snapshot {
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
   upload  Upload  @relation(fields: [uploadId], references: [id], onDelete: Cascade)
 
   @@index([accountId], map: "ix_sheet1_account_id")
+  @@index([userId], map: "ix_sheet1_user_id")
   @@map("workbook_sheet1_snapshots")
 }
 
 model Transaction {
   id                         String   @id @default(uuid()) @db.Uuid
+  userId                     String   @map("user_id") @db.Uuid
   accountId                  String   @map("account_id") @db.Uuid
   firstSeenUploadId          String?  @map("first_seen_upload_id") @db.Uuid
   occurredOn                 DateTime @map("occurred_on") @db.Date
@@ -92,10 +119,12 @@ model Transaction {
   createdAt                  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  account        Account                   @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  upload         Upload?                   @relation(fields: [firstSeenUploadId], references: [id], onDelete: SetNull)
-  classification TransferClassification?   @relation(fields: [transferClassificationId], references: [id], onDelete: SetNull)
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account        Account                 @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  upload         Upload?                 @relation(fields: [firstSeenUploadId], references: [id], onDelete: SetNull)
+  classification TransferClassification? @relation(fields: [transferClassificationId], references: [id], onDelete: SetNull)
 
   @@unique([accountId, dedupeHash], map: "uq_transactions_account_dedupe")
+  @@index([userId], map: "ix_transactions_user_id")
   @@map("transactions")
 }

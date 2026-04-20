@@ -36,6 +36,18 @@ export default function Home() {
           >
             대시보드 열기
           </Link>
+          <Link
+            href="/login"
+            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+          >
+            로그인
+          </Link>
+          <Link
+            href="/signup"
+            className="text-sm font-medium text-indigo-700 underline-offset-4 hover:underline"
+          >
+            회원가입
+          </Link>
         </div>
         <p className="mt-16 text-xs text-slate-400">로컬에서 실행 중인 개인용 도구입니다.</p>
       </main>

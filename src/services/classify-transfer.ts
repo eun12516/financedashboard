@@ -13,6 +13,7 @@ export type ClassifyTransferResult =
 export async function classifyPendingTransfer(
   transactionId: string,
   codeRaw: string,
+  userId: string,
 ): Promise<ClassifyTransferResult> {
   const trimmedId = transactionId?.trim();
   if (!trimmedId) {
@@ -39,6 +40,7 @@ export async function classifyPendingTransfer(
   const result = await prisma.transaction.updateMany({
     where: {
       id: trimmedId,
+      userId,
       isTransfer: true,
       transferClassificationId: null,
     },

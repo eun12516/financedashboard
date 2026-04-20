@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireUserResponse } from "@/lib/auth";
 import { detectColumns } from "@/lib/ingestion/detect-columns";
 import { isLikelyWideMonthlyPivot } from "@/lib/ingestion/detect-pivot-layout";
 import { KOREAN_FLAT_10_COLUMN_BINDING } from "@/lib/ingestion/excel-transaction-layout";
@@ -13,6 +14,9 @@ const MAX_FILE_BYTES = 12 * 1024 * 1024;
  * Use this to build `columnMap` when auto-detection fails.
  */
 export async function POST(req: Request) {
+  const userOrRes = await requireUserResponse();
+  if (userOrRes instanceof NextResponse) return userOrRes;
+
   const len = req.headers.get("content-length");
   if (len && Number(len) > MAX_FILE_BYTES) {
     return NextResponse.json({ error: "File too large" }, { status: 413 });

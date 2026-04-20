@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { LogoutButton } from "@/components/auth/logout-button";
 import { DashboardTabbedContent } from "@/components/dashboard/dashboard-tabbed-content";
 import { DashboardTabsSkeleton } from "@/components/dashboard/dashboard-tabs-skeleton";
 import { DashboardUploadDialog } from "@/components/dashboard/dashboard-upload-dialog";
 import { parseDashboardPeriod } from "@/lib/dashboard/parse-period";
+import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +26,9 @@ export default async function DashboardPage({
 }) {
   const sp = await searchParams;
   const period = parseDashboardPeriod(sp);
+
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -44,12 +50,13 @@ export default async function DashboardPage({
             >
               홈
             </Link>
+            <LogoutButton />
           </nav>
         </div>
       </header>
 
       <Suspense fallback={<DashboardTabsSkeleton />}>
-        <DashboardTabbedContent year={period.year} month={period.month} />
+        <DashboardTabbedContent year={period.year} month={period.month} userId={user.id} />
       </Suspense>
     </main>
   );

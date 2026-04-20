@@ -21,13 +21,14 @@ import { getLatestWorkbookSheet1Snapshot } from "@/services/sheet1-snapshot";
 type Props = {
   year: number;
   month: number;
+  userId: string;
 };
 
 /**
  * 대시보드 본문(탭 + 데이터). `page.tsx`에서 `<Suspense>`로 감싸
  * 헤더를 먼저 스트리밍한 뒤 DB 조회가 끝나면 채웁니다 (Vercel↔Supabase 지연 체감 완화).
  */
-export async function DashboardTabbedContent({ year, month }: Props) {
+export async function DashboardTabbedContent({ year, month, userId }: Props) {
   let errorMessage: string | null = null;
   let data = null;
   let sheet1Snapshot: Awaited<ReturnType<typeof getLatestWorkbookSheet1Snapshot>> = null;
@@ -40,10 +41,10 @@ export async function DashboardTabbedContent({ year, month }: Props) {
      * 예전에는 분석을 두 번째 단계에서만 await 해 Vercel↔Supabase 왕복이 순차로 두 번이었습니다.
      */
     const [s1, t, u, analyticsOutcome] = await Promise.all([
-      getLatestWorkbookSheet1Snapshot(),
-      getMonthTransactionsForDashboard(year, month, 50),
-      getMonthUnclassifiedTransactions(year, month, 100),
-      getAnalyticsSummary(year, month, { trendMonthCount: 6 })
+      getLatestWorkbookSheet1Snapshot(userId),
+      getMonthTransactionsForDashboard(year, month, userId, 50),
+      getMonthUnclassifiedTransactions(year, month, userId, 100),
+      getAnalyticsSummary(year, month, userId, { trendMonthCount: 6 })
         .then((d) => ({ ok: true as const, data: d }))
         .catch((e: unknown) => ({ ok: false as const, error: e })),
     ]);

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
 import { classifyPendingTransfer } from "@/services/classify-transfer";
 
 export type ClassifyTransferActionState =
@@ -24,7 +25,12 @@ export async function classifyTransferAction(
     return { ok: false, error: "code 필드가 올바르지 않습니다." };
   }
 
-  const result = await classifyPendingTransfer(transactionId, code);
+  const user = await getCurrentUser();
+  if (!user) {
+    return { ok: false, error: "로그인이 필요합니다." };
+  }
+
+  const result = await classifyPendingTransfer(transactionId, code, user.id);
 
   if (result.ok) {
     revalidatePath("/transfers");

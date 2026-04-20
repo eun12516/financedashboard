@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireUserResponse } from "@/lib/auth";
 import { getMonthTransactionsForDashboard, listTransferClassifications } from "@/services/month-transactions";
 
 export const runtime = "nodejs";
@@ -9,6 +10,10 @@ export const dynamic = "force-dynamic";
  * 월별 거래 목록(재분류 UI) + 분류 옵션.
  */
 export async function GET(req: Request) {
+  const userOrRes = await requireUserResponse();
+  if (userOrRes instanceof NextResponse) return userOrRes;
+  const user = userOrRes;
+
   const { searchParams } = new URL(req.url);
   const y = Number.parseInt(searchParams.get("year") ?? "", 10);
   const m = Number.parseInt(searchParams.get("month") ?? "", 10);
@@ -18,7 +23,7 @@ export async function GET(req: Request) {
 
   try {
     const [transactions, classifications] = await Promise.all([
-      getMonthTransactionsForDashboard(y, m, 50),
+      getMonthTransactionsForDashboard(y, m, user.id, 50),
       listTransferClassifications(),
     ]);
 

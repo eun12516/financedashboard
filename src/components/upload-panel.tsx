@@ -13,10 +13,17 @@ export type UploadPanelProps = {
 type AccountOption = { id: string; name: string; currency: string };
 
 const ACCOUNT_SLOT_COUNT = 5 as const;
+const DEFAULT_ACCOUNT_LABEL = "기본 계정";
 
 function accountIdForSlot(accounts: AccountOption[], slot: number): string | undefined {
   const name = `계정 ${slot}`;
-  return accounts.find((a) => a.name.trim() === name)?.id;
+  const exact = accounts.find((a) => a.name.trim() === name)?.id;
+  if (exact) return exact;
+  /** 시드 없이 자동 생성된 기본 계정만 있을 때 슬롯 1에 연결 */
+  if (slot === 1) {
+    return accounts.find((a) => a.name.trim() === DEFAULT_ACCOUNT_LABEL)?.id;
+  }
+  return undefined;
 }
 
 type UploadSummary = {
@@ -287,8 +294,7 @@ export function UploadPanel({ onUploadSuccess, variant = "page" }: UploadPanelPr
 
       {accounts.length === 0 && !accountsError && !accountsLoading ? (
         <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          등록된 계정이 없습니다. 터미널에서{" "}
-          <code className="rounded bg-amber-100 px-1">npm run db:seed</code> 를 실행한 뒤 새로고침하세요.
+          계정을 불러오지 못했습니다. 페이지를 새로고침하거나 잠시 후 다시 시도해 주세요. (로그인 후 서버에서 기본 계정이 자동 생성됩니다.)
         </p>
       ) : null}
 
@@ -413,7 +419,11 @@ export function UploadPanel({ onUploadSuccess, variant = "page" }: UploadPanelPr
                         ? "border-indigo-500 bg-indigo-50 text-indigo-900 ring-2 ring-indigo-500/30"
                         : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
                     } ${disabled ? "cursor-not-allowed opacity-45" : ""}`}
-                    title={!slotId ? `DB에 「계정 ${slot}」이 없습니다. npm run db:seed 로 생성할 수 있습니다.` : undefined}
+                    title={
+                      !slotId
+                        ? `이름이 「계정 ${slot}」인 계정이 없습니다. 아래 목록에서 다른 계정(예: 기본 계정)을 선택하세요.`
+                        : undefined
+                    }
                   >
                     <input
                       type="radio"

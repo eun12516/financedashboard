@@ -10,6 +10,7 @@ export async function persistWorkbookSheet1Snapshot(
   filename: string,
   accountId: string,
   uploadId: string,
+  userId: string,
 ): Promise<void> {
   const lower = filename.toLowerCase();
   if (!lower.endsWith(".xlsx") && !lower.endsWith(".xls")) return;
@@ -19,6 +20,7 @@ export async function persistWorkbookSheet1Snapshot(
 
   await prisma.workbookSheet1Snapshot.create({
     data: {
+      userId,
       accountId,
       uploadId,
       ...(parsed.customer != null && {
@@ -32,8 +34,9 @@ export async function persistWorkbookSheet1Snapshot(
   });
 }
 
-export async function getLatestWorkbookSheet1Snapshot() {
+export async function getLatestWorkbookSheet1Snapshot(userId: string) {
   return prisma.workbookSheet1Snapshot.findFirst({
+    where: { userId },
     orderBy: { createdAt: "desc" },
     include: {
       account: { select: { name: true } },

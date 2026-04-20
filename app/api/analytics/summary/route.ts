@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireUserResponse } from "@/lib/auth";
 import {
   AnalyticsValidationError,
   getAnalyticsSummary,
@@ -12,6 +13,10 @@ export const dynamic = "force-dynamic";
  * Returns dashboard-ready JSON (executive, MoM comparison, spending breakdown, trend).
  */
 export async function GET(req: Request) {
+  const userOrRes = await requireUserResponse();
+  if (userOrRes instanceof NextResponse) return userOrRes;
+  const user = userOrRes;
+
   const { searchParams } = new URL(req.url);
   const yearRaw = searchParams.get("year");
   const monthRaw = searchParams.get("month");
@@ -40,7 +45,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const payload = await getAnalyticsSummary(year, month, { trendMonthCount: trendMonths });
+    const payload = await getAnalyticsSummary(year, month, user.id, { trendMonthCount: trendMonths });
     return NextResponse.json(payload);
   } catch (e) {
     if (e instanceof AnalyticsValidationError) {
