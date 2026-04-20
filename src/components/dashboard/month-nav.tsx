@@ -22,12 +22,16 @@ export function MonthNav({ current }: Props) {
       <div className="flex flex-wrap items-center gap-2">
         <Link
           href={href(prev)}
+          prefetch
+          scroll={false}
           className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50/50"
         >
           ← 이전 달
         </Link>
         <Link
           href={href(next)}
+          prefetch
+          scroll={false}
           className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50/50"
         >
           다음 달 →

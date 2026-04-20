@@ -2,6 +2,7 @@ import { DashboardBody } from "@/components/dashboard/dashboard-body";
 import { DashboardMainTabs } from "@/components/dashboard/dashboard-main-tabs";
 import { MainDashboardView } from "@/components/dashboard/main-dashboard-view";
 import { MonthNav } from "@/components/dashboard/month-nav";
+import { PrefetchAdjacentMonths } from "@/components/dashboard/prefetch-adjacent-months";
 import { QuickReclassifyPanel } from "@/components/dashboard/quick-reclassify-panel";
 import { Sheet1ReportSection } from "@/components/dashboard/sheet1-report-section";
 import {
@@ -34,14 +35,37 @@ export async function DashboardTabbedContent({ year, month }: Props) {
   let uncRows: Awaited<ReturnType<typeof getMonthUnclassifiedTransactions>> = [];
 
   try {
-    const [s1, t, u] = await Promise.all([
+    /**
+     * 스냅샷·월 거래·미분류·분석 요약을 한꺼번에 병렬 실행합니다.
+     * 예전에는 분석을 두 번째 단계에서만 await 해 Vercel↔Supabase 왕복이 순차로 두 번이었습니다.
+     */
+    const [s1, t, u, analyticsOutcome] = await Promise.all([
       getLatestWorkbookSheet1Snapshot(),
       getMonthTransactionsForDashboard(year, month, 50),
       getMonthUnclassifiedTransactions(year, month, 100),
+      getAnalyticsSummary(year, month, { trendMonthCount: 6 })
+        .then((d) => ({ ok: true as const, data: d }))
+        .catch((e: unknown) => ({ ok: false as const, error: e })),
     ]);
     sheet1Snapshot = s1;
     txRows = t;
     uncRows = u;
+
+    if (analyticsOutcome.ok) {
+      data = analyticsOutcome.data;
+    } else {
+      const e = analyticsOutcome.error;
+      if (e instanceof AnalyticsValidationError) {
+        errorMessage = e.message;
+      } else if (isPrismaConnectionError(e)) {
+        errorMessage =
+          "데이터베이스에 연결할 수 없습니다. Supabase 프로젝트가 일시 중지되지 않았는지, .env의 DATABASE_URL이 맞는지, 네트워크·VPN·방화벽을 확인해 주세요.";
+        console.error("[dashboard] database unreachable", e);
+      } else {
+        errorMessage = "분석 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.";
+        console.error("[dashboard]", e);
+      }
+    }
   } catch (e) {
     if (isPrismaConnectionError(e)) {
       errorMessage =
@@ -70,23 +94,6 @@ export async function DashboardTabbedContent({ year, month }: Props) {
     }));
 
   const reclassify = { transactions: mapTx(txRows) };
-
-  if (!errorMessage) {
-    try {
-      data = await getAnalyticsSummary(year, month, { trendMonthCount: 6 });
-    } catch (e) {
-      if (e instanceof AnalyticsValidationError) {
-        errorMessage = e.message;
-      } else if (isPrismaConnectionError(e)) {
-        errorMessage =
-          "데이터베이스에 연결할 수 없습니다. Supabase 프로젝트가 일시 중지되지 않았는지, .env의 DATABASE_URL이 맞는지, 네트워크·VPN·방화벽을 확인해 주세요.";
-        console.error("[dashboard] database unreachable", e);
-      } else {
-        errorMessage = "분석 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.";
-        console.error("[dashboard]", e);
-      }
-    }
-  }
 
   const period = { year, month };
   const extra = sheet1Snapshot?.extra ?? null;
@@ -149,6 +156,7 @@ export async function DashboardTabbedContent({ year, month }: Props) {
 
   return (
     <>
+      <PrefetchAdjacentMonths current={{ year, month }} />
       {errorMessage ? (
         <div
           className="mb-6 rounded-xl border border-red-200/90 bg-red-50/95 px-4 py-3.5 text-sm text-red-900 shadow-sm ring-1 ring-red-100"
